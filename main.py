@@ -1,7 +1,6 @@
-from loader import bot
-import handlers  # noqa
-from utils.set_bot_commands import set_default_commands
+from aiogram import Bot, Dispatcher, executor, types
+from loader import dp
 
-if __name__ == "__main__":
-    set_default_commands(bot)
-    bot.infinity_polling()
+
+if __name__ == '__main__':
+    executor.start_polling(dp)
