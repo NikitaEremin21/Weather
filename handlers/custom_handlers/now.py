@@ -17,16 +17,27 @@ async def weather_now_city_command(message: types.Message):
 
 
 @dp.message_handler(state=states.states.WeatherStates.city)
-async def weather_now_command(message: types.Message):
+async def weather_now_command(message: types.Message, state: FSMContext):
     city = message.text
+    lang = 'ru'
     api_key = config.RAPID_API_KEY
-    req = requests.get(f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&units=metric')
+    req = requests.get(f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&lang={lang}&units=metric')
+
+    data = json.loads(req.text)
+    now_temp = data["main"]["temp"]
+    description = data["weather"][0]["description"]
+    icon_id = data["weather"][0]["icon"]
+    get_icon = requests.get(f'https://openweathermap.org/img/wn/{icon_id}@2x.png').content
     try:
-        data = json.loads(req.text)
-        now_temp = data["main"]["temp"]
         if now_temp > 0:
-            await message.answer(text=f'Сейчас в городе {city}: +{now_temp}')
+            await message.answer_photo(photo=get_icon, caption=f'Сейчас в городе {city} {description}'
+                                                               f'\nТемпература: +{now_temp}',
+                                       reply_markup=rep_keyboard_1)
         else:
-            await message.answer(text=f'Сейчас в городе {city}: {now_temp}')
+            await message.answer_photo(photo=get_icon, caption=f'Сейчас в городе {city}: {description}'
+                                                               f'\nТемпература: {now_temp}',
+                                       reply_markup=rep_keyboard_1)
     except Exception:
-        await message.answer(text='Город указан не верно!')
+        await message.answer(text=f'Не удалось получить информацию о погоде для города {city}')
+
+    await state.finish()
