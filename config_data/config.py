@@ -11,5 +11,7 @@ RAPID_API_KEY = os.getenv("RAPID_API_KEY")
 DEFAULT_COMMANDS = (
     ("start", "Запустить бота"),
     ("help", "Вывести справку"),
-    ("now", "Погода сейчас")
+    ("now", "Погода сейчас"),
+    ("five_days", "Погода на 5 дней"),
+    ("day_weather", 'Погода в выбранную дату')
 )
