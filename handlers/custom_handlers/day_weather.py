@@ -23,7 +23,7 @@ async def day_weather_date(message: types.Message, state: FSMContext):
     await states.states.WeatherStates.date_day_weather.set()
     await state.update_data(city=message.text)
     await message.answer(text='Введите дату! \n\n'
-                              '• Обратите внимание на формат даты <b>(Пример: 2024-02-06)</b> \n'
+                              '• Обратите внимание на формат даты <b>(Пример: 06.02.2024)</b> \n'
                               '• В этом разделе можно получить прогноз погоды на выбранную дату '
                               'в промежутке со 2 января 1979 года до 2 января 2025 года',
                          parse_mode=types.ParseMode.HTML)
@@ -31,7 +31,8 @@ async def day_weather_date(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=states.states.WeatherStates.date_day_weather)
 async def day_weather_command(message: types.Message, state: FSMContext):
-    date = message.text
+    first_date = datetime.strptime(str(message.text), '%d.%m.%Y')
+    date = datetime.strftime(first_date, '%Y-%m-%d')
     api_key = config.RAPID_API_KEY
     data = await state.get_data()
     city = data.get('city')

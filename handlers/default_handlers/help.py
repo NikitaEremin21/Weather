@@ -1,5 +1,5 @@
 from aiogram import types, Dispatcher
-from  config_data.config import DEFAULT_COMMANDS
+from config_data.config import DEFAULT_COMMANDS
 from loader import dp
 
 
