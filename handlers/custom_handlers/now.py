@@ -42,22 +42,22 @@ async def weather_now_command(message: types.Message, state: FSMContext):
 
             try:
                 if now_temp > 0:
-                    await message.answer_photo(photo=get_icon, caption=f'Сейчас в городе {city} {description}'
-                                                                       f'\n----------------------------------------'
-                                                                       f'------------------------------'
-                                                                       f'\nТемпература: +{round(now_temp)} °C'
-                                                                       f'\nОщущается: +{round(feels_like)} °C'
-                                                                       f'\nВлажность: {humidity} %'
-                                                                       f'\nСкорость ветра: {round(wind)} м/с',
+                    await message.answer_photo(photo=get_icon,
+                                               caption=f'Сейчас в городе {city} {description}'
+                                                       f'\n-------------------------------------------------'
+                                                       f'\nТемпература: +{round(now_temp)} °C'
+                                                       f'\nОщущается: +{round(feels_like)} °C'
+                                                       f'\nВлажность: {humidity} %'
+                                                       f'\nСкорость ветра: {round(wind)} м/с',
                                                reply_markup=rep_keyboard_1)
                 else:
-                    await message.answer_photo(photo=get_icon, caption=f'Сейчас в городе {city} {description}'
-                                                                       f'\n----------------------------------------'
-                                                                       f'------------------------------'
-                                                                       f'\nТемпература: {round(now_temp)} °C'
-                                                                       f'\nОщущается: {round(feels_like)} °C'
-                                                                       f'\nВлажность: {humidity} %'
-                                                                       f'\nСкорость ветра: {round(wind)} м/с',
+                    await message.answer_photo(photo=get_icon,
+                                               caption=f'Сейчас в городе {city} {description}'
+                                                       f'\n-------------------------------------------------'
+                                                       f'\nТемпература: {round(now_temp)} °C'
+                                                       f'\nОщущается: {round(feels_like)} °C'
+                                                       f'\nВлажность: {humidity} %'
+                                                       f'\nСкорость ветра: {round(wind)} м/с',
                                                reply_markup=rep_keyboard_1)
             except Exception as e:
                 logger.error(f'Ошибка при получении информации о погоде для города {city}: {e}')
