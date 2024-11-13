@@ -7,7 +7,7 @@ from config_data import config
 import states
 import requests
 import json
-from keyboards.reply.reply_keyboard_1 import rep_keyboard_1
+from keyboards.reply.reply_keyboard_1 import weather_keyboard
 from datetime import datetime
 from loguru import logger
 
@@ -49,12 +49,12 @@ async def day_weather_command(message: types.Message, state: FSMContext):
             await state.finish()
             logger.error(f'Ошибка при получении информации о погоде для города {city}: {e}')
             await message.answer(text=f'Ошибка! Не правильно указан город!',
-                                 reply_markup=rep_keyboard_1)
+                                 reply_markup=weather_keyboard)
             return
     else:
         logger.error(f'Ошибка при запросе координат для города {city}. Статус код: {lat_and_lon_get.status_code}')
         await message.answer(text=f'Ошибка при запросе погоды',
-                             reply_markup=rep_keyboard_1)
+                             reply_markup=weather_keyboard)
         return
 
     get_weather = requests.get(f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
@@ -68,10 +68,10 @@ async def day_weather_command(message: types.Message, state: FSMContext):
                                   f'Минимальная температура: <b>{round(weather["temperature"]["min"])} °C</b>\n'
                                   f'Максимальная температура: <b>{round(weather["temperature"]["max"])} °C</b>',
                              parse_mode=types.ParseMode.HTML,
-                             reply_markup=rep_keyboard_1)
+                             reply_markup=weather_keyboard)
     else:
         logger.error(f'Ошибка при запросе погоды. Статус код: {get_weather.status_code}')
         await message.answer(text=f'Ошибка! Не правильно указана дата!',
-                             reply_markup=rep_keyboard_1)
+                             reply_markup=weather_keyboard)
 
     await state.finish()

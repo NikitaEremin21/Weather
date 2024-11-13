@@ -8,7 +8,7 @@ from loguru import logger
 import states
 import requests
 import json
-from keyboards.reply.reply_keyboard_1 import rep_keyboard_1
+from keyboards.reply.reply_keyboard_1 import weather_keyboard
 from datetime import datetime
 from collections import Counter
 
@@ -25,7 +25,8 @@ def weather_description_function(list_weather, i_day):
         'облачно с прояснениями': 'облачно с прояснениями ⛅️',
         'небольшой дождь': 'небольшой дождь',
         'небольшая облачность': 'небольшая облачность',
-        'переменная облачность': 'переменная облачность'
+        'переменная облачность': 'переменная облачность',
+        'небольшой снег': 'небольшой снег'
     }
     if 'дождь' in list_weather or 'небольшой дождь' in list_weather or 'гроза' in list_weather:
         precipitation = 'Ожидаются осадки'
@@ -94,6 +95,6 @@ async def five_days_command(message: types.Message, state: FSMContext):
     else:
         logger.error(f'Ошибка при запросе погоды для города {city}. Статус код: {req.status_code}')
         await message.answer(text=f'Ошибка! Не правильно указан город!',
-                             reply_markup=rep_keyboard_1)
+                             reply_markup=weather_keyboard)
 
     await state.finish()
