@@ -17,7 +17,7 @@ async def get_weather_data(city, lang, api_key):
     :param city:
     :param lang:
     :param api_key:
-    :return:
+    :return data:
     """
     try:
         response = requests.get(f'https://api.openweathermap.org/data/2.5/weather?q={city}'
@@ -26,6 +26,36 @@ async def get_weather_data(city, lang, api_key):
     except requests.RequestException as e:
         logger.error(f'Ошибка при запросе погоды для города {city}. Статус код: {e}')
         return None
+
+
+async def format_weather_data(city, data):
+    """
+    Форматирует погодные данные для отправки в виде сообщения.
+    :param city:
+    :param data:
+    :return photo, caption:
+    """
+    try:
+        now_temp = data["main"]["temp"]
+        feels_like = data["main"]["feels_like"]
+        humidity = data['main']["humidity"]
+        wind = data["wind"]["speed"]
+        description = data["weather"][0]["description"]
+
+        icon_id = data["weather"][0]["icon"][:2]
+        path_icon = os.path.abspath(os.path.join(f'images/{icon_id}.png'))
+        caption = (
+            f'Сейчас в городе {city} {description}\n\n'
+            f'🌡️ Температура: {"+" if now_temp > 0 else ""}{round(now_temp)} °C\n'
+            f'🤗 Ощущается: {"+" if feels_like > 0 else ""}{round(feels_like)} °C\n'
+            f'💧 Влажность: {humidity} %\n'
+            f'🌬️ Скорость ветра: {round(wind)} м/с\n'
+        )
+        with open(path_icon, 'rb') as photo:
+            return photo.read(), caption
+    except Exception as e:
+        logger.error(f'Ошибка при получении информации о погоде для города {city}: {e}')
+        return None, None
 
 
 @dp.message_handler(lambda message: message.text == 'Погода сейчас' or message.text == '/now')
@@ -41,32 +71,14 @@ async def weather_now_command(message: types.Message, state: FSMContext):
     api_key = config.RAPID_API_KEY
     data = await get_weather_data(city, lang, api_key)
     if data:
-        try:
-            now_temp = data["main"]["temp"]
-            feels_like = data["main"]["feels_like"]
-            humidity = data['main']["humidity"]
-            wind = data["wind"]["speed"]
-            description = data["weather"][0]["description"]
-
-            icon_id = data["weather"][0]["icon"][:2]
-            path_icon = os.path.abspath(os.path.join(f'images/{icon_id}.png'))
-
-            with open(path_icon, 'rb') as photo:
-                caption = (
-                    f'Сейчас в городе {city} {description}\n'
-                    f'-------------------------------------------------\n'
-                    f'Температура: {"+" if now_temp > 0 else ""}{round(now_temp)} °C\n'
-                    f'Ощущается: {"+" if feels_like > 0 else ""}{round(feels_like)} °C\n'
-                    f'Влажность: {humidity} %\n'
-                    f'Скорость ветра: {round(wind)} м/с\n'
-                )
-                await message.answer_photo(photo=photo, caption=caption, reply_markup=weather_keyboard)
-        except Exception as e:
-            logger.error(f'Ошибка при получении информации о погоде для города {city}: {e}')
+        photo, caption = await format_weather_data(city, data)
+        if photo and caption:
+            await message.answer_photo(photo=photo, caption=caption, reply_markup=weather_keyboard)
+        else:
             await message.answer(text=f'Не удалось обработать информацию о погоде для города {city}',
                                  reply_markup=weather_keyboard)
-
-    await message.answer(text=f'Ошибка! Не правильно указан город!',
-                         reply_markup=weather_keyboard)
+    else:
+        await message.answer(text=f'Ошибка! Не правильно указан город!',
+                             reply_markup=weather_keyboard)
 
     await state.finish()
