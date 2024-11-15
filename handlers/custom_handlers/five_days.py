@@ -13,20 +13,41 @@ from datetime import datetime
 from collections import Counter
 
 
+async def get_weather_data(city, lang, api_key):
+    """
+    Получает данные о погоде с OpenWeather API.
+    :param city:
+    :param lang:
+    :param api_key:
+    :return data:
+    """
+    try:
+        response = requests.get(f'https://api.openweathermap.org/data/2.5/forecast?q={city}'
+                                f'&appid={api_key}&lang={lang}&units=metric')
+        return json.loads(response.text)
+    except requests.RequestException as e:
+        logger.error(f'Ошибка при запросе погоды для города {city}. Статус код: {e}')
+        return None
+
+
 def weather_description_function(list_weather, i_day):
     """
-        Функция анализирует список погодных условий и возвращает наиболее частое
-        погодное условие вместе с информацией о возможности осадков.
+    Функция анализирует список погодных условий и возвращает наиболее частое
+    погодное условие вместе с информацией о возможности осадков.
+    :param list_weather:
+    :param i_day:
+    :return weather_description:
     """
     weather_description_dict = {
         'ясно': 'ясно ☀️',
-        'дождь': 'дождь 🌧',
+        'дождь': 'дождь 🌧️',
         'пасмурно': 'пасмурно ☁️',
-        'облачно с прояснениями': 'облачно с прояснениями ⛅️',
-        'небольшой дождь': 'небольшой дождь',
-        'небольшая облачность': 'небольшая облачность',
-        'переменная облачность': 'переменная облачность',
-        'небольшой снег': 'небольшой снег'
+        'облачно с прояснениями': 'облачно с прояснениями ⛅',
+        'небольшой дождь': '\nнебольшой дождь 🌧️',
+        'небольшая облачность': 'небольшая облачность ☁️',
+        'переменная облачность': 'переменная облачность ⛅',
+        'небольшой снег': 'небольшой снег ❄️',
+        'снег': 'снег ❄️'
     }
     if 'дождь' in list_weather or 'небольшой дождь' in list_weather or 'гроза' in list_weather:
         precipitation = 'Ожидаются осадки'
@@ -49,11 +70,9 @@ async def five_days_command(message: types.Message, state: FSMContext):
     lang = 'ru'
     date_now = datetime.now().date()
     api_key = config.RAPID_API_KEY
-    req = requests.get(f'https://api.openweathermap.org/data/2.5/forecast?q={city}'
-                       f'&appid={api_key}&lang={lang}&units=metric')
+    data = await get_weather_data(city, lang, api_key)
 
-    if req.status_code == 200:
-        data = json.loads(req.text)
+    if data:
         daily_forecast = {}
         weather_list = {}
         message_text = f"<b>Прогноз погоды на 5 дней в городе {city}:</b>\n"
@@ -91,9 +110,8 @@ async def five_days_command(message: types.Message, state: FSMContext):
 
         await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
-                             reply_markup=rep_keyboard_1)
+                             reply_markup=weather_keyboard)
     else:
-        logger.error(f'Ошибка при запросе погоды для города {city}. Статус код: {req.status_code}')
         await message.answer(text=f'Ошибка! Не правильно указан город!',
                              reply_markup=weather_keyboard)
 
