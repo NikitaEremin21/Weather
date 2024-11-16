@@ -30,12 +30,52 @@ async def get_weather_data(city, lang, api_key):
         return None
 
 
-def weather_description_function(list_weather, i_day):
+async def get_message_text(city, data, date_now):
+    try:
+        daily_forecast = {}
+        weather_list = {}
+        message_text = f"<b>Прогноз погоды на 5 дней в городе {city}:</b>\n"
+
+        for i_day in data['list']:
+            dt_txt = i_day['dt_txt']
+            date = dt_txt.split()
+            if date[0] not in weather_list:
+                weather_list[date[0]] = [i_day['weather'][0]['description']]
+            else:
+                weather_list[date[0]].append(i_day['weather'][0]['description'])
+
+            if date[0] != str(date_now):
+                if date[0] not in daily_forecast:
+                    daily_forecast[date[0]] = {
+                        'temp_min': i_day['main']['temp_min'],
+                        'temp_max': i_day['main']['temp_max']
+                    }
+                else:
+                    daily_forecast[date[0]]['temp_min'] = min(daily_forecast[date[0]]['temp_min'],
+                                                              i_day['main']['temp_min'])
+                    daily_forecast[date[0]]['temp_max'] = max(daily_forecast[date[0]]['temp_max'],
+                                                              i_day['main']['temp_max'])
+
+        for i_date in daily_forecast:
+            weather_description = weather_description_function(weather_list[i_date])
+
+            date = datetime.strptime(i_date, "%Y-%m-%d").strftime("%d.%m.%Y")
+            message_text += (f'\n<b>{date}</b>\n'
+                             f'Преимущественно {weather_description[0]}\n'
+                             f'{weather_description[1]}\n'
+                             f'Температура:  '
+                             f'<b>{round(daily_forecast[i_date]["temp_min"])} - '
+                             f'{round(daily_forecast[i_date]["temp_max"])} °C</b>\n')
+        return message_text
+    except Exception as e:
+        logger.error(f'Ошибка в обработке данных: {e}')
+
+
+def weather_description_function(list_weather):
     """
     Функция анализирует список погодных условий и возвращает наиболее частое
     погодное условие вместе с информацией о возможности осадков.
     :param list_weather:
-    :param i_day:
     :return weather_description:
     """
     weather_description_dict = {
@@ -66,51 +106,28 @@ async def five_days_city_command(message: types.Message):
 
 @dp.message_handler(state=states.states.WeatherStates.city_five_days)
 async def five_days_command(message: types.Message, state: FSMContext):
-    city = message.text
+    city = message.text.strip()
     lang = 'ru'
     date_now = datetime.now().date()
     api_key = config.RAPID_API_KEY
+
+    if not city.replace(" ", "").isalpha():
+        await message.answer("Введите корректное название города (только буквы)!")
+        return
+
+    await message.answer("Ищу данные...")
+
     data = await get_weather_data(city, lang, api_key)
 
     if data:
-        daily_forecast = {}
-        weather_list = {}
-        message_text = f"<b>Прогноз погоды на 5 дней в городе {city}:</b>\n"
-
-        for i_day in data['list']:
-            dt_txt = i_day['dt_txt']
-            date = dt_txt.split()
-            if date[0] not in weather_list:
-                weather_list[date[0]] = [i_day['weather'][0]['description']]
-            else:
-                weather_list[date[0]].append(i_day['weather'][0]['description'])
-
-            if date[0] != str(date_now):
-                if date[0] not in daily_forecast:
-                    daily_forecast[date[0]] = {
-                        'temp_min': i_day['main']['temp_min'],
-                        'temp_max': i_day['main']['temp_max']
-                    }
-                else:
-                    daily_forecast[date[0]]['temp_min'] = min(daily_forecast[date[0]]['temp_min'],
-                                                              i_day['main']['temp_min'])
-                    daily_forecast[date[0]]['temp_max'] = max(daily_forecast[date[0]]['temp_max'],
-                                                              i_day['main']['temp_max'])
-
-        for i_date in daily_forecast:
-            weather_description = weather_description_function(weather_list[i_date], i_date)
-
-            date = datetime.strptime(i_date, "%Y-%m-%d").strftime("%d.%m.%Y")
-            message_text += (f'\n<b>{date}</b>\n'
-                             f'Преимущественно {weather_description[0]}\n'
-                             f'{weather_description[1]}\n'
-                             f'Температура:  '
-                             f'<b>{round(daily_forecast[i_date]["temp_min"])} - '
-                             f'{round(daily_forecast[i_date]["temp_max"])} °C</b>\n')
-
-        await message.answer(text=message_text,
-                             parse_mode=types.ParseMode.HTML,
-                             reply_markup=weather_keyboard)
+        message_text = await get_message_text(city, data, date_now)
+        if message_text:
+            await message.answer(text=message_text,
+                                 parse_mode=types.ParseMode.HTML,
+                                 reply_markup=weather_keyboard)
+        else:
+            await message.answer(text='Ошибка в обработке данных',
+                                 reply_markup=weather_keyboard)
     else:
         await message.answer(text=f'Ошибка! Не правильно указан город!',
                              reply_markup=weather_keyboard)
