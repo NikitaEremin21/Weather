@@ -12,6 +12,24 @@ from datetime import datetime
 from loguru import logger
 
 
+async def get_coordinates(city, api_key):
+    """
+    Получение координат города из OpenWeather API
+    """
+    url = f'http://api.openweathermap.org/geo/1.0/direct?q={city}&limit={1}&appid={api_key}&units=metric'
+    try:
+        response = requests.get(url)
+        data = response.json()
+        result = data[0]['lat'], data[0]['lon']
+        return True, result
+    except IndexError:
+        logger.error(f'Город "{city}" не найден')
+        return False, f'Город "{city}" не найден'
+    except requests.RequestException as e:
+        logger.error(f'Ошибка при запросе API: {e}')
+        return False, f'Ошибка при запросе API: {e}'
+
+
 @dp.message_handler(lambda message: message.text == 'Погода в выбранную дату' or message.text == '/day_weather')
 async def day_weather_city(message: types.Message):
     await states.states.WeatherStates.city_day_weather.set()
@@ -37,25 +55,10 @@ async def day_weather_command(message: types.Message, state: FSMContext):
     data = await state.get_data()
     city = data.get('city')
 
-    lat_and_lon_get = requests.get(f'http://api.openweathermap.org/geo/1.0/direct?q={city}'
-                                   f'&limit={1}&appid={api_key}&units=metric')
-
-    if lat_and_lon_get.status_code == 200:
-        try:
-            lat_and_lon = json.loads(lat_and_lon_get.text)
-            lat = lat_and_lon[0]['lat']
-            lon = lat_and_lon[0]['lon']
-        except Exception as e:
-            await state.finish()
-            logger.error(f'Ошибка при получении информации о погоде для города {city}: {e}')
-            await message.answer(text=f'Ошибка! Не правильно указан город!',
-                                 reply_markup=weather_keyboard)
-            return
-    else:
-        logger.error(f'Ошибка при запросе координат для города {city}. Статус код: {lat_and_lon_get.status_code}')
-        await message.answer(text=f'Ошибка при запросе погоды',
-                             reply_markup=weather_keyboard)
-        return
+    status, result = await get_coordinates(city, api_key)
+    if not status:
+        await message.answer(text=f'Ошибка! {result}')
+    lat, lon = result[0], result[1]
 
     get_weather = requests.get(f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
                                f'lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric')
