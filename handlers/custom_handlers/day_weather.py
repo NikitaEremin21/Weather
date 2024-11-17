@@ -12,6 +12,10 @@ from datetime import datetime
 from loguru import logger
 
 
+class WeatherError(Exception):
+    pass
+
+
 async def get_coordinates(city, api_key):
     """
     Получение координат города из OpenWeather API
@@ -26,8 +30,27 @@ async def get_coordinates(city, api_key):
         logger.error(f'Город "{city}" не найден')
         return False, f'Город "{city}" не найден'
     except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе API: {e}')
-        return False, f'Ошибка при запросе API: {e}'
+        logger.error(f'Ошибка при запросе координат: {e}')
+        return False, f'Ошибка при запросе координат'
+
+
+async def get_weather(lat, lon, date, api_key):
+    """
+    Получает погодные данные из OpenWeather API
+    :param lat:
+    :param lon:
+    :param date:
+    :param api_key:
+    :return:
+    """
+    url = (f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
+           f'lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric')
+    try:
+        response = requests.get(url)
+        return True, response.json()
+    except requests.RequestException as e:
+        logger.error(f'Ошибка при запросе погоды: {e}')
+        return False, 'Не удалось получить данные о погоде'
 
 
 @dp.message_handler(lambda message: message.text == 'Погода в выбранную дату' or message.text == '/day_weather')
@@ -49,22 +72,26 @@ async def day_weather_date(message: types.Message, state: FSMContext):
 
 @dp.message_handler(state=states.states.WeatherStates.date_day_weather)
 async def day_weather_command(message: types.Message, state: FSMContext):
-    first_date = datetime.strptime(str(message.text), '%d.%m.%Y')
-    date = datetime.strftime(first_date, '%Y-%m-%d')
-    api_key = config.RAPID_API_KEY
-    data = await state.get_data()
-    city = data.get('city')
+    try:
+        first_date = datetime.strptime(str(message.text), '%d.%m.%Y')
+        date = datetime.strftime(first_date, '%Y-%m-%d')
+        api_key = config.RAPID_API_KEY
+        data = await state.get_data()
+        city = data.get('city')
 
-    status, result = await get_coordinates(city, api_key)
-    if not status:
-        await message.answer(text=f'Ошибка! {result}')
-    lat, lon = result[0], result[1]
+        if not city.replace(" ", "").isalpha():
+            raise WeatherError("Введите корректное название города (только буквы)!")
 
-    get_weather = requests.get(f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
-                               f'lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric')
+        status, result = await get_coordinates(city, api_key)
+        if not status:
+            raise WeatherError(result)
 
-    if get_weather.status_code == 200:
-        weather = json.loads(get_weather.text)
+        lat, lon = result[0], result[1]
+
+        status, weather = await get_weather(lat, lon, date, api_key)
+        if not status:
+            raise WeatherError(weather)
+
         date = datetime.strptime(date, "%Y-%m-%d")
 
         await message.answer(text=f'Дата: <b>{datetime.strftime(date, "%d.%m.%Y")}</b> \n'
@@ -72,9 +99,8 @@ async def day_weather_command(message: types.Message, state: FSMContext):
                                   f'Максимальная температура: <b>{round(weather["temperature"]["max"])} °C</b>',
                              parse_mode=types.ParseMode.HTML,
                              reply_markup=weather_keyboard)
-    else:
-        logger.error(f'Ошибка при запросе погоды. Статус код: {get_weather.status_code}')
-        await message.answer(text=f'Ошибка! Не правильно указана дата!',
-                             reply_markup=weather_keyboard)
+
+    except WeatherError as e:
+        await message.answer(text=f'Ошибка! {e}')
 
     await state.finish()
