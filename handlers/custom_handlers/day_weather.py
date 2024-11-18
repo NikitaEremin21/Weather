@@ -22,16 +22,19 @@ async def get_coordinates(city, api_key):
     """
     url = f'http://api.openweathermap.org/geo/1.0/direct?q={city}&limit={1}&appid={api_key}&units=metric'
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         data = response.json()
         result = data[0]['lat'], data[0]['lon']
         return True, result
-    except IndexError:
-        logger.error(f'Город "{city}" не найден')
-        return False, f'Город "{city}" не найден'
+    except requests.exceptions.HTTPError as e:
+        logger.error(f'Ошибка при запросе координат: {e}')
+        return False, f'Сервис временно недоступен. Попробуйте позже!'
     except requests.RequestException as e:
         logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Ошибка при запросе координат'
+        return False, f'Сервис временно недоступен. Попробуйте позже!'
+    except requests.exceptions.Timeoute as e:
+        logger.error(f'Ошибка при запросе координат: {e}')
+        return False, f'Сервис временно недоступен. Попробуйте позже!'
 
 
 async def get_weather(lat, lon, date, api_key):
@@ -46,11 +49,30 @@ async def get_weather(lat, lon, date, api_key):
     url = (f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
            f'lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric')
     try:
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
         return True, response.json()
+    except requests.exceptions.HTTPError as e:
+        logger.error(f'Ошибка при запросе координат: {e}')
+        return False, f'Сервис временно недоступен. Попробуйте позже!'
     except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе погоды: {e}')
-        return False, 'Не удалось получить данные о погоде'
+        logger.error(f'Ошибка при запросе координат: {e}')
+        return False, f'Сервис временно недоступен. Попробуйте позже!'
+    except requests.exceptions.Timeoute as e:
+        logger.error(f'Ошибка при запросе координат: {e}')
+        return False, f'Сервис временно недоступен. Попробуйте позже!'
+
+
+async def get_message_text(date, weather):
+    try:
+        date = datetime.strptime(date, "%Y-%m-%d")
+
+        message_text = (f'Дата: <b>{datetime.strftime(date, "%d.%m.%Y")}</b> \n'
+                        f'Минимальная температура: <b>{round(weather["temperature"]["min"])} °C</b>\n'
+                        f'Максимальная температура: <b>{round(weather["temperature"]["max"])} °C</b>')
+        return True, message_text
+    except Exception as e:
+        logger.error(f'Произошла ошибка при формировании сообщения: {e}')
+        return False, 'Ошибка! Попробуйте еще раз!'
 
 
 @dp.message_handler(lambda message: message.text == 'Погода в выбранную дату' or message.text == '/day_weather')
@@ -92,15 +114,16 @@ async def day_weather_command(message: types.Message, state: FSMContext):
         if not status:
             raise WeatherError(weather)
 
-        date = datetime.strptime(date, "%Y-%m-%d")
-
-        await message.answer(text=f'Дата: <b>{datetime.strftime(date, "%d.%m.%Y")}</b> \n'
-                                  f'Минимальная температура: <b>{round(weather["temperature"]["min"])} °C</b>\n'
-                                  f'Максимальная температура: <b>{round(weather["temperature"]["max"])} °C</b>',
+        status, message_text = await get_message_text(date, weather)
+        if not status:
+            raise WeatherError(message_text)
+        await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
                              reply_markup=weather_keyboard)
 
     except WeatherError as e:
         await message.answer(text=f'Ошибка! {e}')
+    except Exception as e:
+        await message.answer(text='Ошибка! Повторите позже!')
 
     await state.finish()
