@@ -24,6 +24,8 @@ async def get_coordinates(city, api_key):
     try:
         response = requests.get(url, timeout=10)
         data = response.json()
+        if not data:
+            return False, 'Город не найден. Попробуйте ввести другой город.'
         result = data[0]['lat'], data[0]['lon']
         return True, result
     except requests.exceptions.HTTPError as e:
@@ -83,8 +85,21 @@ async def day_weather_city(message: types.Message):
 
 @dp.message_handler(state=states.states.WeatherStates.city_day_weather)
 async def day_weather_date(message: types.Message, state: FSMContext):
+    api_key = config.RAPID_API_KEY
+    city = message.text
+
+    if not city.replace(" ", "").isalpha():
+        await message.answer("Введите корректное название города (только буквы)!")
+        return
+
+    status, result = await get_coordinates(city, api_key)
+    if not status:
+        await message.answer(result)
+        return
+
+    lat, lon = result
     await states.states.WeatherStates.date_day_weather.set()
-    await state.update_data(city=message.text)
+    await state.update_data(lat=lat, lon=lon)
     await message.answer(text='Введите дату! \n\n'
                               '• Обратите внимание на формат даты <b>(Пример: 06.02.2024)</b> \n'
                               '• В этом разделе можно получить прогноз погоды на выбранную дату '
@@ -99,16 +114,8 @@ async def day_weather_command(message: types.Message, state: FSMContext):
         date = datetime.strftime(first_date, '%Y-%m-%d')
         api_key = config.RAPID_API_KEY
         data = await state.get_data()
-        city = data.get('city')
-
-        if not city.replace(" ", "").isalpha():
-            raise WeatherError("Введите корректное название города (только буквы)!")
-
-        status, result = await get_coordinates(city, api_key)
-        if not status:
-            raise WeatherError(result)
-
-        lat, lon = result[0], result[1]
+        lat = data.get('lat')
+        lon = data.get('lon')
 
         status, weather = await get_weather(lat, lon, date, api_key)
         if not status:
