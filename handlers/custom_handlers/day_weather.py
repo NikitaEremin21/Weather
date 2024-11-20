@@ -7,6 +7,7 @@ from config_data import config
 import states
 import requests
 import json
+import re
 from keyboards.reply.reply_keyboard_1 import weather_keyboard
 from datetime import datetime
 from loguru import logger
@@ -87,30 +88,49 @@ async def day_weather_city(message: types.Message):
 async def day_weather_date(message: types.Message, state: FSMContext):
     api_key = config.RAPID_API_KEY
     city = message.text
+    try:
+        if not city.replace(" ", "").isalpha():
+            raise WeatherError()
 
-    if not city.replace(" ", "").isalpha():
-        await message.answer("Введите корректное название города (только буквы)!")
-        return
+        status, result = await get_coordinates(city, api_key)
+        if not status:
+            raise ValueError()
 
-    status, result = await get_coordinates(city, api_key)
-    if not status:
-        await message.answer(result)
-        return
-
-    lat, lon = result
-    await states.states.WeatherStates.date_day_weather.set()
-    await state.update_data(lat=lat, lon=lon)
-    await message.answer(text='Введите дату! \n\n'
-                              '• Обратите внимание на формат даты <b>(Пример: 06.02.2024)</b> \n'
-                              '• В этом разделе можно получить прогноз погоды на выбранную дату '
-                              'в промежутке со 2 января 1979 года до 2 января 2025 года',
-                         parse_mode=types.ParseMode.HTML)
+        lat, lon = result
+        await states.states.WeatherStates.date_day_weather.set()
+        await state.update_data(lat=lat, lon=lon)
+        await message.answer(text='Введите дату! \n\n'
+                                  '• Обратите внимание на формат даты <b>(Пример: 06.02.2024)</b> \n'
+                                  '• В этом разделе можно получить прогноз погоды на выбранную дату '
+                                  'в промежутке со 2 января 1979 года до 2 января 2025 года',
+                             parse_mode=types.ParseMode.HTML)
+    except WeatherError:
+        await message.answer(text="Введите корректное название города (только буквы)!")
+    except ValueError:
+        await message.answer(text='Город не найдет! Проверьте, правильно ли написано название!')
 
 
 @dp.message_handler(state=states.states.WeatherStates.date_day_weather)
 async def day_weather_command(message: types.Message, state: FSMContext):
     try:
-        first_date = datetime.strptime(str(message.text), '%d.%m.%Y')
+        date_text = message.text
+        date_pattern = r'^\d{2}\.\d{2}\.\d{4}$'
+        if not re.match(date_pattern, date_text):
+            await message.answer("Неверный формат даты! Используйте формат ДД.ММ.ГГГГ.")
+            return
+
+        try:
+            first_date = datetime.strptime(str(message.text), '%d.%m.%Y')
+        except ValueError:
+            raise WeatherError("Некорректная дата! Используйте формат ДД.ММ.ГГГГ, например, 06.02.2024.")
+
+        min_date = datetime(1997, 1, 2)
+        max_date = datetime(2025, 1, 2)
+        if not (min_date <= first_date <= max_date):
+            await message.answer(f"Дата должна быть в пределах с {min_date.strftime('%d.%m.%Y')}"
+                                 f"по {max_date.strftime('%d.%m.%Y')}.")
+            return
+
         date = datetime.strftime(first_date, '%Y-%m-%d')
         api_key = config.RAPID_API_KEY
         data = await state.get_data()
@@ -129,8 +149,8 @@ async def day_weather_command(message: types.Message, state: FSMContext):
                              reply_markup=weather_keyboard)
 
     except WeatherError as e:
-        await message.answer(text=f'Ошибка! {e}')
-    except Exception as e:
+        await message.answer(text=f'{e}')
+    except Exception:
         await message.answer(text='Ошибка! Повторите позже!')
 
     await state.finish()
