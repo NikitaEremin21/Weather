@@ -32,10 +32,10 @@ async def get_coordinates(city, api_key):
     except requests.exceptions.HTTPError as e:
         logger.error(f'Ошибка при запросе координат: {e}')
         return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.RequestException as e:
+    except requests.exceptions.Timeout as e:
         logger.error(f'Ошибка при запросе координат: {e}')
         return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.exceptions.Timeoute as e:
+    except requests.RequestException as e:
         logger.error(f'Ошибка при запросе координат: {e}')
         return False, f'Сервис временно недоступен. Попробуйте позже!'
 
@@ -57,10 +57,10 @@ async def get_weather(lat, lon, date, api_key):
     except requests.exceptions.HTTPError as e:
         logger.error(f'Ошибка при запросе координат: {e}')
         return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.RequestException as e:
+    except requests.exceptions.Timeout as e:
         logger.error(f'Ошибка при запросе координат: {e}')
         return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.exceptions.Timeoute as e:
+    except requests.RequestException as e:
         logger.error(f'Ошибка при запросе координат: {e}')
         return False, f'Сервис временно недоступен. Попробуйте позже!'
 
@@ -120,18 +120,18 @@ async def day_weather_command(message: types.Message, state: FSMContext):
             return
 
         try:
-            first_date = datetime.strptime(str(message.text), '%d.%m.%Y')
+            input_date = datetime.strptime(str(message.text), '%d.%m.%Y')
         except ValueError:
             raise WeatherError("Некорректная дата! Используйте формат ДД.ММ.ГГГГ, например, 06.02.2024.")
 
-        min_date = datetime(1997, 1, 2)
+        min_date = datetime(1979, 1, 2)
         max_date = datetime(2025, 1, 2)
-        if not (min_date <= first_date <= max_date):
+        if not (min_date <= input_date <= max_date):
             await message.answer(f"Дата должна быть в пределах с {min_date.strftime('%d.%m.%Y')}"
                                  f"по {max_date.strftime('%d.%m.%Y')}.")
             return
 
-        date = datetime.strftime(first_date, '%Y-%m-%d')
+        date = datetime.strftime(input_date, '%Y-%m-%d')
         api_key = config.RAPID_API_KEY
         data = await state.get_data()
         lat = data.get('lat')
