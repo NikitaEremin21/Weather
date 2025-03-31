@@ -1,39 +1,17 @@
 from aiogram import types
 from loader import dp
 from aiogram.dispatcher import FSMContext
-from aiogram.dispatcher.filters.state import State, StatesGroup
+from services.weather_apy import get_weather_now
 from config_data import config
 from loguru import logger
-import states
-import requests
-import json
 import os
+import states
 from keyboards.reply.reply_keyboard_1 import weather_keyboard
-
-
-async def get_weather_data(city, lang, api_key):
-    """
-    Получает данные о погоде с OpenWeather API.
-    :param city:
-    :param lang:
-    :param api_key:
-    :return data:
-    """
-    try:
-        response = requests.get(f'https://api.openweathermap.org/data/2.5/weather?q={city}'
-                                f'&appid={api_key}&lang={lang}&units=metric')
-        return json.loads(response.text)
-    except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе погоды для города {city}. Статус код: {e}')
-        return None
 
 
 async def format_weather_data(city, data):
     """
     Форматирует погодные данные для отправки в виде сообщения.
-    :param city:
-    :param data:
-    :return photo, caption:
     """
     try:
         now_temp = data["main"]["temp"]
@@ -69,16 +47,19 @@ async def weather_now_command(message: types.Message, state: FSMContext):
     city = message.text
     lang = 'ru'
     api_key = config.RAPID_API_KEY
-    data = await get_weather_data(city, lang, api_key)
-    if data:
-        photo, caption = await format_weather_data(city, data)
-        if photo and caption:
-            await message.answer_photo(photo=photo, caption=caption, reply_markup=weather_keyboard)
-        else:
-            await message.answer(text=f'Не удалось обработать информацию о погоде для города {city}',
-                                 reply_markup=weather_keyboard)
-    else:
-        await message.answer(text=f'Ошибка! Не правильно указан город!',
-                             reply_markup=weather_keyboard)
 
-    await state.finish()
+    success, data = await get_weather_now(city, lang, api_key)
+
+    if not success:
+        await message.answer(text=data, reply_markup=weather_keyboard)
+        await state.finish()
+        return
+
+    photo, caption = await format_weather_data(city, data)
+
+    if photo and caption:
+        await message.answer_photo(photo=photo, caption=caption, reply_markup=weather_keyboard)
+    else:
+        await message.answer(text=f'Не удалось обработать информацию о погоду для города {city}',
+                             reply_markup=weather_keyboard)
+        await state.finish()
