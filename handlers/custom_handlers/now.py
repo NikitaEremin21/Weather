@@ -62,4 +62,4 @@ async def weather_now_command(message: types.Message, state: FSMContext):
     else:
         await message.answer(text=f'Не удалось обработать информацию о погоду для города {city}',
                              reply_markup=weather_keyboard)
-        await state.finish()
+    await state.finish()

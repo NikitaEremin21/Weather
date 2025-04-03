@@ -3,6 +3,7 @@ from loader import dp
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from services.weather_apy import get_weather_five_days
 from config_data import config
 from loguru import logger
 import states
@@ -11,21 +12,6 @@ import json
 from keyboards.reply.reply_keyboard_1 import weather_keyboard
 from datetime import datetime
 from collections import Counter
-
-
-async def get_weather_data(city, lang, api_key):
-    """
-    Получает данные о погоде из OpenWeather API.
-    """
-    url = (f'https://api.openweathermap.org/data/2.5/forecast?q={city}'
-           f'&appid={api_key}&lang={lang}&units=metric')
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе погоды для города {city}. Статус код: {e}')
-        return None
 
 
 async def group_weather_data(data, date_now):
@@ -127,8 +113,8 @@ async def five_days_command(message: types.Message, state: FSMContext):
 
     await message.answer("Ищу данные...")
     try:
-        data = await get_weather_data(city, lang, api_key)
-        if not data:
+        status, data = await get_weather_five_days(city, lang, api_key)
+        if not status:
             raise ValueError('Не удалось получить данные о погоде.')
 
         daily_forecast, weather_list = await group_weather_data(data, date_now)

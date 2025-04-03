@@ -21,3 +21,11 @@ async def get_weather_now(city, lang, api_key):
     """
     url = f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&lang={lang}&units=metric'
     return await get_response(url)
+
+
+async def get_weather_five_days(city, lang, api_key):
+    """
+    Запрос погоды на 5 дней
+    """
+    url = f'https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&lang={lang}&units=metric'
+    return await get_response(url)
