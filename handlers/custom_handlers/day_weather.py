@@ -3,6 +3,7 @@ from loader import dp
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
+from services.weather_apy import get_weather_day, get_coordinates
 from config_data import config
 import states
 import requests
@@ -17,52 +18,52 @@ class WeatherError(Exception):
     pass
 
 
-async def get_coordinates(city, api_key):
-    """
-    Получение координат города из OpenWeather API
-    """
-    url = f'http://api.openweathermap.org/geo/1.0/direct?q={city}&limit={1}&appid={api_key}&units=metric'
-    try:
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        if not data:
-            return False, 'Город не найден. Попробуйте ввести другой город.'
-        result = data[0]['lat'], data[0]['lon']
-        return True, result
-    except requests.exceptions.HTTPError as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.exceptions.Timeout as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-
-
-async def get_weather(lat, lon, date, api_key):
-    """
-    Получает погодные данные из OpenWeather API
-    :param lat:
-    :param lon:
-    :param date:
-    :param api_key:
-    :return:
-    """
-    url = (f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
-           f'lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric')
-    try:
-        response = requests.get(url, timeout=10)
-        return True, response.json()
-    except requests.exceptions.HTTPError as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.exceptions.Timeout as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
+# async def get_coordinates(city, api_key):
+#     """
+#     Получение координат города из OpenWeather API
+#     """
+#     url = f'http://api.openweathermap.org/geo/1.0/direct?q={city}&limit={1}&appid={api_key}&units=metric'
+#     try:
+#         response = requests.get(url, timeout=10)
+#         data = response.json()
+#         if not data:
+#             return False, 'Город не найден. Попробуйте ввести другой город.'
+#         result = data[0]['lat'], data[0]['lon']
+#         return True, result
+#     except requests.exceptions.HTTPError as e:
+#         logger.error(f'Ошибка при запросе координат: {e}')
+#         return False, f'Сервис временно недоступен. Попробуйте позже!'
+#     except requests.exceptions.Timeout as e:
+#         logger.error(f'Ошибка при запросе координат: {e}')
+#         return False, f'Сервис временно недоступен. Попробуйте позже!'
+#     except requests.RequestException as e:
+#         logger.error(f'Ошибка при запросе координат: {e}')
+#         return False, f'Сервис временно недоступен. Попробуйте позже!'
+#
+#
+# async def get_weather(lat, lon, date, api_key):
+#     """
+#     Получает погодные данные из OpenWeather API
+#     :param lat:
+#     :param lon:
+#     :param date:
+#     :param api_key:
+#     :return:
+#     """
+#     url = (f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
+#            f'lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric')
+#     try:
+#         response = requests.get(url, timeout=10)
+#         return True, response.json()
+#     except requests.exceptions.HTTPError as e:
+#         logger.error(f'Ошибка при запросе координат: {e}')
+#         return False, f'Сервис временно недоступен. Попробуйте позже!'
+#     except requests.exceptions.Timeout as e:
+#         logger.error(f'Ошибка при запросе координат: {e}')
+#         return False, f'Сервис временно недоступен. Попробуйте позже!'
+#     except requests.RequestException as e:
+#         logger.error(f'Ошибка при запросе координат: {e}')
+#         return False, f'Сервис временно недоступен. Попробуйте позже!'
 
 
 async def get_message_text(date, weather):
@@ -137,7 +138,7 @@ async def day_weather_command(message: types.Message, state: FSMContext):
         lat = data.get('lat')
         lon = data.get('lon')
 
-        status, weather = await get_weather(lat, lon, date, api_key)
+        status, weather = await get_weather_day(lat, lon, date, api_key)
         if not status:
             raise WeatherError(weather)
 
