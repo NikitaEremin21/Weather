@@ -1,5 +1,6 @@
 import requests
 from loguru import logger
+from config_data.config import OPENWEATHER_NOW_API, OPENWEATHER_FIVE_DAY_API, OPENWEATHER_DAY_WEATHER_API, OPENWEATHER_COORDINATION
 
 
 async def get_response(url):
@@ -19,7 +20,7 @@ async def get_coordinates(city, api_key):
     """
     Получение координат города из OpenWeather API
     """
-    url = f'http://api.openweathermap.org/geo/1.0/direct?q={city}&limit={1}&appid={api_key}&units=metric'
+    url = f'{OPENWEATHER_COORDINATION}q={city}&limit={1}&appid={api_key}&units=metric'
     try:
         response = requests.get(url, timeout=10)
         data = response.json()
@@ -42,7 +43,7 @@ async def get_weather_now(city, lang, api_key):
     """
     Запрос текущей погоды
     """
-    url = f'https://api.openweathermap.org/data/2.5/weather?q={city}&appid={api_key}&lang={lang}&units=metric'
+    url = f'{OPENWEATHER_NOW_API}q={city}&appid={api_key}&lang={lang}&units=metric'
     return await get_response(url)
 
 
@@ -50,7 +51,7 @@ async def get_weather_five_days(city, lang, api_key):
     """
     Запрос погоды на 5 дней
     """
-    url = f'https://api.openweathermap.org/data/2.5/forecast?q={city}&appid={api_key}&lang={lang}&units=metric'
+    url = f'{OPENWEATHER_FIVE_DAY_API}q={city}&appid={api_key}&lang={lang}&units=metric'
     return await get_response(url)
 
 
@@ -58,8 +59,7 @@ async def get_weather_day(lat, lon, date, api_key):
     """
     Получает погодные данные из OpenWeather API
     """
-    url = (f'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
-           f'lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric')
+    url = f'{OPENWEATHER_DAY_WEATHER_API}lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric'
     try:
         response = requests.get(url, timeout=10)
         return True, response.json()

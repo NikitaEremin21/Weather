@@ -15,3 +15,8 @@ DEFAULT_COMMANDS = (
     ("five_days", "Погода на 5 дней"),
     ("day_weather", 'Погода в выбранную дату')
 )
+
+OPENWEATHER_NOW_API = 'https://api.openweathermap.org/data/2.5/weather?'
+OPENWEATHER_FIVE_DAY_API = 'https://api.openweathermap.org/data/2.5/forecast?'
+OPENWEATHER_DAY_WEATHER_API = 'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
+OPENWEATHER_COORDINATION = 'http://api.openweathermap.org/geo/1.0/direct?'
