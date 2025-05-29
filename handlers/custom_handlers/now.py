@@ -7,6 +7,8 @@ from loguru import logger
 import os
 import states
 from keyboards.reply.reply_keyboard_1 import weather_keyboard
+from services.errors import CityNotFoundError, CityValidationError
+from services.validators import validation_city_name
 
 
 async def format_weather_data(city, data):
@@ -21,7 +23,7 @@ async def format_weather_data(city, data):
         description = data["weather"][0]["description"]
 
         icon_id = data["weather"][0]["icon"][:2]
-        path_icon = os.path.abspath(os.path.join(f'images/{icon_id}.png'))
+        path_icon = f'images/{icon_id}.png'
         caption = (
             f'Сейчас в городе {city} {description}\n\n'
             f'🌡️ Температура: {"+" if now_temp > 0 else ""}{round(now_temp)} °C\n'
@@ -44,22 +46,30 @@ async def weather_now_city_command(message: types.Message):
 
 @dp.message_handler(state=states.states.WeatherStates.city)
 async def weather_now_command(message: types.Message, state: FSMContext):
-    city = message.text
-    lang = 'ru'
-    api_key = config.RAPID_API_KEY
+    try:
+        city = message.text
+        if not validation_city_name(city):
+            raise CityValidationError()
+        lang = 'ru'
+        api_key = config.RAPID_API_KEY
 
-    success, data = await get_weather_now(city, lang, api_key)
+        status, data = await get_weather_now(city, lang, api_key)
 
-    if not success:
-        await message.answer(text=data, reply_markup=weather_keyboard)
+        if not status or 'main' not in data or 'wind' not in data or 'weather' not in data:
+            raise CityNotFoundError
+        photo, caption = await format_weather_data(city, data)
+
+        if photo and caption:
+            await message.answer_photo(photo=photo, caption=caption, reply_markup=weather_keyboard)
+        else:
+            await message.answer(text=f'Не удалось обработать информацию о погоду для города {city}',
+                                 reply_markup=weather_keyboard)
+    except CityValidationError:
+        await message.answer(text='Некорректное название города')
+    except CityNotFoundError:
+        await message.answer(text=f'Город не найден!')
+    except Exception as e:
+        await message.answer(text=f'Возникла техническая ошибка, попробуйте позже!')
+        logger.error(f'Error: {e}')
+    finally:
         await state.finish()
-        return
-
-    photo, caption = await format_weather_data(city, data)
-
-    if photo and caption:
-        await message.answer_photo(photo=photo, caption=caption, reply_markup=weather_keyboard)
-    else:
-        await message.answer(text=f'Не удалось обработать информацию о погоду для города {city}',
-                             reply_markup=weather_keyboard)
-    await state.finish()
