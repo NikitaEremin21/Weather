@@ -69,6 +69,7 @@ async def get_message_text(city, daily_forecast, weather_list):
         return message_text
     except Exception as e:
         logger.error(f'Ошибка в обработке данных: {e}')
+        return None
 
 
 def weather_description_function(list_weather):
@@ -115,28 +116,29 @@ async def five_days_command(message: types.Message, state: FSMContext):
         lang = 'ru'
         date_now = datetime.now().date()
         api_key = config.RAPID_API_KEY
-    
-        try:
-            status, data = await get_weather_five_days(city, lang, api_key)
-            if not status:
-                raise ValueError('Не удалось получить данные о погоде.')
 
-            daily_forecast, weather_list = await group_weather_data(data, date_now)
-            message_text = await get_message_text(city, daily_forecast, weather_list)
-            if not message_text:
-                raise ValueError('Не удалось сформировать ответ.')
+        status, data = await get_weather_five_days(city, lang, api_key)
+        if not status or 'list' not in data:
+            raise CityNotFoundError()
 
-            await message.answer(text=message_text,
-                                 parse_mode=types.ParseMode.HTML,
-                                 reply_markup=weather_keyboard)
-        except ValueError as e:
-            logger.error(e)
-            await message.answer(text='Ошибка в обработке данных',
-                                 reply_markup=weather_keyboard)
-        except Exception as e:
-            logger.error(f'Непредвиденная ошибка: {e}')
-            await message.answer(text=f'Ошибка! Не правильно указан город!',
-                                 reply_markup=weather_keyboard)
+        daily_forecast, weather_list = await group_weather_data(data, date_now)
+        if daily_forecast is None or weather_list is None:
+            raise ValueError()
+
+        message_text = await get_message_text(city, daily_forecast, weather_list)
+        if message_text is None:
+            raise ValueError('Не удалось сформировать ответ.')
+
+        await message.answer(text=message_text,
+                             parse_mode=types.ParseMode.HTML,
+                             reply_markup=weather_keyboard)
+        logger.info(f'Успешно выполнен запрос для города {city}')
+
     except CityValidationError:
         await message.answer(text='Некорректное название города')
+    except CityNotFoundError:
+        await message.answer(text=f'Город не найден!')
+    except ValueError:
+        logger.error('Ошибка при обработке данных')
+        await message.answer(text='Ошибка при обработке данных')
     await state.finish()
