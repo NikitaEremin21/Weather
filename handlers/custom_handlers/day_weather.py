@@ -4,7 +4,7 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from services.weather_apy import get_weather_day, get_coordinates
-from services.validators import validation_city_name
+from services.validators import validation_city_name, validate_date_format, validate_date_range
 from services.errors import CityValidationError, CityNotFoundError, DateValidationCity
 from config_data import config
 import states
@@ -68,22 +68,16 @@ async def day_weather_date(message: types.Message, state: FSMContext):
 @dp.message_handler(state=states.states.WeatherStates.date_day_weather)
 async def day_weather_command(message: types.Message, state: FSMContext):
     try:
-        date_text = message.text
-        date_pattern = r'^\d{2}\.\d{2}\.\d{4}$'
-        if not re.match(date_pattern, date_text):
-            await message.answer("Неверный формат даты! Используйте формат ДД.ММ.ГГГГ.")
-            return
-
         try:
-            input_date = datetime.strptime(str(message.text), '%d.%m.%Y')
+            validate_date_format(message.text)
+            input_date = datetime.strptime(message.text, '%d.%m.%Y')
+            validate_date_range(input_date)
+        except DateValidationCity as e:
+            await message.answer(str(e))
+            print(e)
+            return
         except ValueError:
-            raise WeatherError("Некорректная дата! Используйте формат ДД.ММ.ГГГГ, например, 06.02.2024.")
-
-        min_date = datetime(1979, 1, 2)
-        max_date = datetime(2025, 1, 2)
-        if not (min_date <= input_date <= max_date):
-            await message.answer(f"Дата должна быть в пределах с {min_date.strftime('%d.%m.%Y')}"
-                                 f"по {max_date.strftime('%d.%m.%Y')}.")
+            await message.answer("Некорректная дата! Используйте формат ДД.ММ.ГГГГ, например, 06.02.2024.")
             return
 
         date = datetime.strftime(input_date, '%Y-%m-%d')
