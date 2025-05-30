@@ -4,6 +4,8 @@ from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from services.weather_apy import get_weather_day, get_coordinates
+from services.validators import validation_city_name
+from services.errors import CityValidationError, CityNotFoundError, DateValidationCity
 from config_data import config
 import states
 import requests
@@ -39,15 +41,15 @@ async def day_weather_city(message: types.Message):
 
 @dp.message_handler(state=states.states.WeatherStates.city_day_weather)
 async def day_weather_date(message: types.Message, state: FSMContext):
-    api_key = config.RAPID_API_KEY
-    city = message.text
     try:
-        if not city.replace(" ", "").isalpha():
-            raise WeatherError()
+        city = message.text
+        if not validation_city_name(city):
+            raise CityValidationError()
+        api_key = config.RAPID_API_KEY
 
         status, result = await get_coordinates(city, api_key)
         if not status:
-            raise ValueError()
+            raise CityNotFoundError()
 
         lat, lon = result
         await states.states.WeatherStates.date_day_weather.set()
@@ -57,10 +59,10 @@ async def day_weather_date(message: types.Message, state: FSMContext):
                                   '• В этом разделе можно получить прогноз погоды на выбранную дату '
                                   'в промежутке со 2 января 1979 года до 2 января 2025 года',
                              parse_mode=types.ParseMode.HTML)
-    except WeatherError:
-        await message.answer(text="Введите корректное название города (только буквы)!")
-    except ValueError:
-        await message.answer(text='Город не найдет! Проверьте, правильно ли написано название!')
+    except CityValidationError():
+        await message.answer(text='Некорректное название города')
+    except CityNotFoundError():
+        await message.answer(text='Город не найден')
 
 
 @dp.message_handler(state=states.states.WeatherStates.date_day_weather)
