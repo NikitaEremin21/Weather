@@ -70,15 +70,4 @@ async def get_weather_day(lat, lon, date, api_key):
     Получает погодные данные из OpenWeather API
     """
     url = f'{OPENWEATHER_DAY_WEATHER_API}lat={lat}&lon={lon}&date={date}&appid={api_key}&units=metric'
-    try:
-        response = requests.get(url, timeout=10)
-        return True, response.json()
-    except requests.exceptions.HTTPError as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.exceptions.Timeout as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
+    return await get_response(url)

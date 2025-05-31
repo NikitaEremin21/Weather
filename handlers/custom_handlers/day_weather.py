@@ -5,7 +5,7 @@ from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from services.weather_apy import get_weather_day, get_coordinates
 from services.validators import validation_city_name, validate_date_format, validate_date_range
-from services.errors import CityValidationError, CityNotFoundError, DateValidationCity
+from services.errors import CityValidationError, CityNotFoundError, DateValidationCity, MessageError, APIError
 from config_data import config
 import states
 import requests
@@ -14,10 +14,6 @@ import re
 from keyboards.reply.reply_keyboard_1 import weather_keyboard
 from datetime import datetime
 from loguru import logger
-
-
-class WeatherError(Exception):
-    pass
 
 
 async def get_message_text(date, weather):
@@ -30,7 +26,7 @@ async def get_message_text(date, weather):
         return True, message_text
     except Exception as e:
         logger.error(f'Произошла ошибка при формировании сообщения: {e}')
-        return False, 'Ошибка! Попробуйте еще раз!'
+        return False, 'Произошла ошибка при формировании сообщения!'
 
 
 @dp.message_handler(lambda message: message.text == 'Погода в выбранную дату' or message.text == '/day_weather')
@@ -44,12 +40,13 @@ async def day_weather_date(message: types.Message, state: FSMContext):
     try:
         city = message.text
         if not validation_city_name(city):
-            raise CityValidationError()
+            raise CityValidationError
+
         api_key = config.RAPID_API_KEY
 
         status, result = await get_coordinates(city, api_key)
         if not status:
-            raise CityNotFoundError()
+            raise CityNotFoundError
 
         lat, lon = result
         await states.states.WeatherStates.date_day_weather.set()
@@ -59,9 +56,9 @@ async def day_weather_date(message: types.Message, state: FSMContext):
                                   '• В этом разделе можно получить прогноз погоды на выбранную дату '
                                   'в промежутке со 2 января 1979 года до 2 января 2025 года',
                              parse_mode=types.ParseMode.HTML)
-    except CityValidationError():
+    except CityValidationError:
         await message.answer(text='Некорректное название города')
-    except CityNotFoundError():
+    except CityNotFoundError:
         await message.answer(text='Город не найден')
 
 
@@ -74,7 +71,6 @@ async def day_weather_command(message: types.Message, state: FSMContext):
             validate_date_range(input_date)
         except DateValidationCity as e:
             await message.answer(str(e))
-            print(e)
             return
         except ValueError:
             await message.answer("Некорректная дата! Используйте формат ДД.ММ.ГГГГ, например, 06.02.2024.")
@@ -88,18 +84,19 @@ async def day_weather_command(message: types.Message, state: FSMContext):
 
         status, weather = await get_weather_day(lat, lon, date, api_key)
         if not status:
-            raise WeatherError(weather)
+            raise APIError
 
         status, message_text = await get_message_text(date, weather)
         if not status:
-            raise WeatherError(message_text)
+            raise MessageError
         await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
                              reply_markup=weather_keyboard)
-
-    except WeatherError as e:
-        await message.answer(text=f'{e}')
+    except APIError as e:
+        await message.answer(str(e))
+    except MessageError as e:
+        await message.answer(str(e))
     except Exception:
         await message.answer(text='Ошибка! Повторите позже!')
-
-    await state.finish()
+    finally:
+        await state.finish()

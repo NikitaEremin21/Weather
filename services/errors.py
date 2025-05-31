@@ -32,3 +32,10 @@ class APIError(WeatherBotError):
     def __init__(self, message='Сервис погоды временно недоступен. Попробуйте позже!'):
         self.message = message
         super().__init__(self.message)
+
+
+class MessageError(WeatherBotError):
+    """Ошибка при формировании сообщения"""
+    def __init__(self, message='Произошла ошибка при формировании сообщения!'):
+        self.message = message
+        super().__init__(self.message)
