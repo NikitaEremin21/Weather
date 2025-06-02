@@ -14,7 +14,7 @@ async def get_response(url):
         return True, response.json()
     except requests.exceptions.HTTPError as e:
         if e.response.status_code == 404:
-            return False, 'Город не найдет!'
+            return False, 'Город не найден!'
         else:
             logger.error(f'HTTPError: {e}')
             return False, 'Ошибка сервера!'
