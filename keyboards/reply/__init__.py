@@ -1,1 +1,1 @@
-from . import reply_keyboard_1
+from . import reply_keyboards

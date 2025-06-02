@@ -9,7 +9,7 @@ from loguru import logger
 import states
 import requests
 import json
-from keyboards.reply.reply_keyboard_1 import weather_keyboard
+from keyboards.reply.reply_keyboards import get_main_keyboard
 from datetime import datetime
 from collections import Counter
 from services.errors import CityNotFoundError, CityValidationError
@@ -131,7 +131,7 @@ async def five_days_command(message: types.Message, state: FSMContext):
 
         await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
-                             reply_markup=weather_keyboard)
+                             reply_markup=get_main_keyboard())
         logger.info(f'Успешно выполнен запрос для города {city}')
 
     except CityValidationError:

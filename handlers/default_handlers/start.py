@@ -1,6 +1,6 @@
 from aiogram import types
 from loader import dp
-from keyboards.reply.reply_keyboard_1 import weather_keyboard
+from keyboards.reply.reply_keyboards import get_main_keyboard
 
 
 @dp.message_handler(commands=['start'])
@@ -12,4 +12,4 @@ async def start_command(message: types.Message):
                               ' • показать погоду в данный момент\n'
                               ' • показать погоду на 5 дней\n'
                               ' • показать погоду в определенную дату.',
-                         reply_markup=weather_keyboard)
+                         reply_markup=get_main_keyboard())

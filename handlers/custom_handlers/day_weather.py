@@ -11,7 +11,7 @@ import states
 import requests
 import json
 import re
-from keyboards.reply.reply_keyboard_1 import weather_keyboard
+from keyboards.reply.reply_keyboards import get_main_keyboard
 from datetime import datetime
 from loguru import logger
 
@@ -91,7 +91,7 @@ async def day_weather_command(message: types.Message, state: FSMContext):
             raise MessageError
         await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
-                             reply_markup=weather_keyboard)
+                             reply_markup=get_main_keyboard())
     except APIError as e:
         await message.answer(str(e))
     except MessageError as e:

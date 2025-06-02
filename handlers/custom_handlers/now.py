@@ -6,7 +6,7 @@ from config_data import config
 from loguru import logger
 import os
 import states
-from keyboards.reply.reply_keyboard_1 import weather_keyboard, cancel_keyboard
+from keyboards.reply.reply_keyboards import get_main_keyboard, get_cancel_keyboard
 from services.errors import CityNotFoundError, CityValidationError, APIError
 from services.validators import validation_city_name
 
@@ -42,7 +42,7 @@ async def format_weather_data(city, data):
 async def weather_now_city_command(message: types.Message):
     await states.states.WeatherStates.city.set()
     await message.answer(text='В каком городе вы хотите посмотреть погоду?',
-                         reply_markup=cancel_keyboard)
+                         reply_markup=get_cancel_keyboard())
 
 
 @dp.message_handler(state=states.states.WeatherStates.city)
@@ -69,27 +69,27 @@ async def weather_now_command(message: types.Message, state: FSMContext):
         if photo and caption:
             await message.answer_photo(photo=photo,
                                        caption=caption,
-                                       reply_markup=weather_keyboard)
+                                       reply_markup=get_main_keyboard())
         else:
             await message.answer(text=f'Не удалось обработать информацию о погоду для города {city}',
-                                 reply_markup=weather_keyboard)
+                                 reply_markup=get_main_keyboard())
 
         await state.finish()
 
     except CityValidationError:
         await message.answer(text='Некорректное название города, попробуйте еще раз!',
-                             reply_markup=cancel_keyboard)
+                             reply_markup=get_cancel_keyboard())
     except CityNotFoundError:
         await message.answer(text=f'Город не найден, попробуйте еще раз!',
-                             reply_markup=cancel_keyboard)
+                             reply_markup=get_cancel_keyboard())
     except APIError as e:
         await message.answer(text=f'Сервис временно не доступен, попробуйте позже!',
-                             reply_markup=weather_keyboard)
+                             reply_markup=get_main_keyboard())
         logger.error(f'Error: {e}')
         await state.finish()
     except Exception as e:
         await message.answer(text=f'Возникла техническая ошибка, попробуйте позже!',
-                             reply_markup=weather_keyboard)
+                             reply_markup=get_main_keyboard())
         logger.error(f'Error: {e}')
         await state.finish()
 
@@ -103,5 +103,5 @@ async def cancel_handler(message: types.Message, state: FSMContext):
     await state.finish()
     await message.answer(
         "Действие отменено",
-        reply_markup=weather_keyboard
+        reply_markup=get_main_keyboard()
     )
