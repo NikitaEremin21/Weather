@@ -140,7 +140,7 @@ async def five_days_command(message: types.Message, state: FSMContext):
         await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
                              reply_markup=get_main_keyboard())
-        logger.info(f'Успешно выполнен запрос для города {city}')
+        logger.info(f'Успешно выполнен запрос для города "{city}"')
         await state.finish()
 
     except CityValidationError:

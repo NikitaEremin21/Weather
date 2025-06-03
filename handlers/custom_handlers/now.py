@@ -74,6 +74,7 @@ async def weather_now_command(message: types.Message, state: FSMContext):
             await message.answer(text=f'Не удалось обработать информацию о погоду для города {city}',
                                  reply_markup=get_main_keyboard())
 
+        logger.info(f'Успешно выполнен запрос для города "{city}"')
         await state.finish()
 
     except CityValidationError:

@@ -11,7 +11,7 @@ import states
 import requests
 import json
 import re
-from keyboards.reply.reply_keyboards import get_main_keyboard
+from keyboards.reply.reply_keyboards import get_main_keyboard, get_cancel_keyboard
 from datetime import datetime
 from loguru import logger
 
@@ -32,12 +32,16 @@ async def get_message_text(date, weather):
 @dp.message_handler(lambda message: message.text == 'Погода в выбранную дату' or message.text == '/day_weather')
 async def day_weather_city(message: types.Message):
     await states.states.WeatherStates.city_day_weather.set()
-    await message.answer(text='В каком городе вы хотите посмотреть погоду?')
+    await message.answer(text='В каком городе вы хотите посмотреть погоду?',
+                         reply_markup=get_cancel_keyboard())
 
 
 @dp.message_handler(state=states.states.WeatherStates.city_day_weather)
 async def day_weather_date(message: types.Message, state: FSMContext):
     try:
+        if message.text == "Отмена":
+            await cancel_handler(message, state)
+            return
         city = message.text
         if not validation_city_name(city):
             raise CityValidationError
@@ -46,11 +50,13 @@ async def day_weather_date(message: types.Message, state: FSMContext):
 
         status, result = await get_coordinates(city, api_key)
         if not status:
-            raise CityNotFoundError
+            if 'Город не найден' in result:
+                raise CityNotFoundError
+            raise APIError
 
         lat, lon = result
         await states.states.WeatherStates.date_day_weather.set()
-        await state.update_data(lat=lat, lon=lon)
+        await state.update_data(lat=lat, lon=lon, city=city)
         await message.answer(text='Введите дату! \n\n'
                                   '• Обратите внимание на формат даты <b>(Пример: 06.02.2024)</b> \n'
                                   '• В этом разделе можно получить прогноз погоды на выбранную дату '
@@ -60,11 +66,19 @@ async def day_weather_date(message: types.Message, state: FSMContext):
         await message.answer(text='Некорректное название города')
     except CityNotFoundError:
         await message.answer(text='Город не найден')
+    except APIError as e:
+        await message.answer(text=f'Сервис временно не доступен, попробуйте позже!',
+                             reply_markup=get_main_keyboard())
+        logger.error(f'Error: {e}')
+        await state.finish()
 
 
 @dp.message_handler(state=states.states.WeatherStates.date_day_weather)
 async def day_weather_command(message: types.Message, state: FSMContext):
     try:
+        if message.text == "Отмена":
+            await cancel_handler(message, state)
+            return
         try:
             validate_date_format(message.text)
             input_date = datetime.strptime(message.text, '%d.%m.%Y')
@@ -88,15 +102,36 @@ async def day_weather_command(message: types.Message, state: FSMContext):
 
         status, message_text = await get_message_text(date, weather)
         if not status:
+            logger.error(f'Не удалось сформировать ответ для города {city}')
             raise MessageError
         await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
                              reply_markup=get_main_keyboard())
+
+        logger.info(f'Успешно выполнен запрос для города "{data.get("city")}"')
+        await state.finish()
+
     except APIError as e:
+        logger.error(f'Error: {e}')
         await message.answer(str(e))
+        await state.finish()
     except MessageError as e:
         await message.answer(str(e))
-    except Exception:
-        await message.answer(text='Ошибка! Повторите позже!')
-    finally:
         await state.finish()
+    except Exception as e:
+        logger.error(str(e))
+        await message.answer(text='Ошибка! Повторите позже!')
+        await state.finish()
+
+
+@dp.message_handler(text="Отмена", state="*")
+async def cancel_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+
+    await state.finish()
+    await message.answer(
+        "Действие отменено",
+        reply_markup=get_main_keyboard()
+    )
