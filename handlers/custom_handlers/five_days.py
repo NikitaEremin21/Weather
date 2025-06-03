@@ -9,10 +9,10 @@ from loguru import logger
 import states
 import requests
 import json
-from keyboards.reply.reply_keyboards import get_main_keyboard
+from keyboards.reply.reply_keyboards import get_main_keyboard, get_cancel_keyboard
 from datetime import datetime
 from collections import Counter
-from services.errors import CityNotFoundError, CityValidationError
+from services.errors import CityNotFoundError, CityValidationError, APIError
 from services.validators import validation_city_name
 
 
@@ -101,7 +101,8 @@ async def five_days_city_command(message: types.Message):
     Начинает диалог для получения прогноза погоды
     """
     await states.states.WeatherStates.city_five_days.set()
-    await message.answer(text='В каком городе вы хотите посмотреть погоду?')
+    await message.answer(text='В каком городе вы хотите посмотреть погоду?',
+                         reply_markup=get_cancel_keyboard())
 
 
 @dp.message_handler(state=states.states.WeatherStates.city_five_days)
@@ -109,36 +110,67 @@ async def five_days_command(message: types.Message, state: FSMContext):
     """
     Обрабатывает данные и возвращает прогноз погоды на 5 дней
     """
+    if message.text == "Отмена":
+        await cancel_handler(message, state)
+        return
     try:
         city = message.text.strip()
         if not validation_city_name(city):
-            raise CityValidationError()
+            raise CityValidationError
         lang = 'ru'
         date_now = datetime.now().date()
         api_key = config.RAPID_API_KEY
 
         status, data = await get_weather_five_days(city, lang, api_key)
         if not status or 'list' not in data:
-            raise CityNotFoundError()
+            if data == 'Город не найден!':
+                raise CityNotFoundError
+            raise APIError
 
         daily_forecast, weather_list = await group_weather_data(data, date_now)
         if daily_forecast is None or weather_list is None:
             raise ValueError()
 
         message_text = await get_message_text(city, daily_forecast, weather_list)
+
         if message_text is None:
-            raise ValueError('Не удалось сформировать ответ.')
+            logger.error(f'Не удалось сформировать ответ для города {city}')
+            raise ValueError(f'Не удалось сформировать ответ для города {city}')
 
         await message.answer(text=message_text,
                              parse_mode=types.ParseMode.HTML,
                              reply_markup=get_main_keyboard())
         logger.info(f'Успешно выполнен запрос для города {city}')
+        await state.finish()
 
     except CityValidationError:
-        await message.answer(text='Некорректное название города')
+        await message.answer(text='Некорректное название города, попробуйте еще раз!')
     except CityNotFoundError:
         await message.answer(text=f'Город не найден!')
+    except APIError as e:
+        await message.answer(text=f'Сервис временно не доступен, попробуйте позже!',
+                             reply_markup=get_main_keyboard())
+        logger.error(f'Error: {e}')
+        await state.finish()
     except ValueError:
-        logger.error('Ошибка при обработке данных')
-        await message.answer(text='Ошибка при обработке данных')
+        await message.answer(text=f'Возникла техническая ошибка, попробуйте позже!',
+                             reply_markup=get_main_keyboard())
+        await state.finish()
+    except Exception as e:
+        await message.answer(text=f'Возникла техническая ошибка, попробуйте позже!',
+                             reply_markup=get_main_keyboard())
+        logger.error(f'Error: {e}')
+        await state.finish()
+
+
+@dp.message_handler(text="Отмена", state="*")
+async def cancel_handler(message: types.Message, state: FSMContext):
+    current_state = await state.get_state()
+    if current_state is None:
+        return
+
     await state.finish()
+    await message.answer(
+        "Действие отменено",
+        reply_markup=get_main_keyboard()
+    )
