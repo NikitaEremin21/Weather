@@ -31,22 +31,7 @@ async def get_coordinates(city, api_key):
     Получение координат города из OpenWeather API
     """
     url = f'{OPENWEATHER_COORDINATION}q={city}&limit={1}&appid={api_key}&units=metric'
-    try:
-        response = requests.get(url, timeout=10)
-        data = response.json()
-        if not data:
-            return False, 'Город не найден. Попробуйте ввести другой город.'
-        result = data[0]['lat'], data[0]['lon']
-        return True, result
-    except requests.exceptions.HTTPError as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.exceptions.Timeout as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
-    except requests.RequestException as e:
-        logger.error(f'Ошибка при запросе координат: {e}')
-        return False, f'Сервис временно недоступен. Попробуйте позже!'
+    return await get_response(url)
 
 
 async def get_weather_now(city, lang, api_key):

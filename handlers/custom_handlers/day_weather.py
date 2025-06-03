@@ -48,13 +48,16 @@ async def day_weather_date(message: types.Message, state: FSMContext):
 
         api_key = config.RAPID_API_KEY
 
-        status, result = await get_coordinates(city, api_key)
+        status, data = await get_coordinates(city, api_key)
         if not status:
-            if 'Город не найден' in result:
+            if 'Город не найден' in data:
                 raise CityNotFoundError
             raise APIError
 
-        lat, lon = result
+        if not data:
+            raise CityNotFoundError
+
+        lat, lon = data[0]['lat'], data[0]['lon']
         await states.states.WeatherStates.date_day_weather.set()
         await state.update_data(lat=lat, lon=lon, city=city)
         await message.answer(text='Введите дату! \n\n'
@@ -70,6 +73,11 @@ async def day_weather_date(message: types.Message, state: FSMContext):
         await message.answer(text=f'Сервис временно не доступен, попробуйте позже!',
                              reply_markup=get_main_keyboard())
         logger.error(f'Error: {e}')
+        await state.finish()
+    except Exception as e:
+        logger.error(str(e))
+        await message.answer(text='Ошибка! Повторите позже!',
+                             reply_markup=get_main_keyboard())
         await state.finish()
 
 
@@ -113,14 +121,17 @@ async def day_weather_command(message: types.Message, state: FSMContext):
 
     except APIError as e:
         logger.error(f'Error: {e}')
-        await message.answer(str(e))
+        await message.answer(str(e),
+                             reply_markup=get_main_keyboard())
         await state.finish()
     except MessageError as e:
-        await message.answer(str(e))
+        await message.answer(str(e),
+                             reply_markup=get_main_keyboard())
         await state.finish()
     except Exception as e:
         logger.error(str(e))
-        await message.answer(text='Ошибка! Повторите позже!')
+        await message.answer(text='Ошибка! Повторите позже!',
+                             reply_markup=get_main_keyboard())
         await state.finish()
 
 
