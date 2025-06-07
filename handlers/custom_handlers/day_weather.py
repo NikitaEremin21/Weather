@@ -103,8 +103,9 @@ async def day_weather_command(message: types.Message, state: FSMContext):
         data = await state.get_data()
         lat = data.get('lat')
         lon = data.get('lon')
+        city = data.get('city')
 
-        status, weather = await get_weather_day(lat, lon, date, api_key)
+        status, weather = await get_weather_day(lat, lon, city, date, api_key)
         if not status:
             raise APIError
 
