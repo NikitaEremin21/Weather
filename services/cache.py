@@ -17,11 +17,10 @@ class RedisCache:
             logger.error(f'Ошибка при установке соединения с Redis: {e}')
             raise
 
-    def set(self, key, data):
+    def set(self, key, ttl, data):
         """Добавление данных в кэш"""
         try:
-            self.redis.set(key, json.dumps(data))
-            print('Данные добавлены')
+            self.redis.setex(key, ttl, json.dumps(data))
             return True
         except Exception as e:
             logger.error(f'Ошибка при добавлении данных в кэш: {e}')
