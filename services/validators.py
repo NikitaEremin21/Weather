@@ -1,6 +1,6 @@
 import re
 from services.errors import DateValidationCity
-from datetime import datetime
+from datetime import datetime, date
 
 
 def validation_city_name(city):
@@ -21,8 +21,9 @@ def validate_date_format(date_text: str) -> None:
 
 def validate_date_range(input_date: datetime) -> None:
     """Проверяет, что дата в допустимом диапазоне"""
+    year, month, day = str(date.today()).split('-')
     min_date = datetime(1979, 1, 2)
-    max_date = datetime(2025, 1, 2)
+    max_date = datetime(int(year), int(month), int(day))
     if not (min_date <= input_date <= max_date):
         raise DateValidationCity(
             f"Дата должна быть в пределах с {min_date.strftime('%d.%m.%Y')} "

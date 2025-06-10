@@ -31,7 +31,6 @@ class RedisCache:
         try:
             cache_data = self.redis.get(key)
             if cache_data:
-                print('Данные получены')
                 return json.loads(cache_data)
             return None
         except Exception as e:

@@ -63,7 +63,7 @@ async def day_weather_date(message: types.Message, state: FSMContext):
         await message.answer(text='Введите дату! \n\n'
                                   '• Обратите внимание на формат даты <b>(Пример: 06.02.2024)</b> \n'
                                   '• В этом разделе можно получить прогноз погоды на выбранную дату '
-                                  'в промежутке со 2 января 1979 года до 2 января 2025 года',
+                                  'в промежутке с 02.01.1979 по 09.06.2025',
                              parse_mode=types.ParseMode.HTML)
     except CityValidationError:
         await message.answer(text='Некорректное название города')
