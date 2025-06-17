@@ -119,7 +119,7 @@ async def five_days_command(message: types.Message, state: FSMContext):
             raise CityValidationError
         lang = 'ru'
         date_now = datetime.now().date()
-        api_key = config.RAPID_API_KEY
+        api_key = config.OPENWEATHER_API_KEY
 
         status, data = await get_weather_five_days(city, lang, api_key)
         if not status or 'list' not in data:

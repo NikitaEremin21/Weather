@@ -46,7 +46,7 @@ async def day_weather_date(message: types.Message, state: FSMContext):
         if not validation_city_name(city):
             raise CityValidationError
 
-        api_key = config.RAPID_API_KEY
+        api_key = config.OPENWEATHER_API_KEY
 
         status, data = await get_coordinates(city, api_key)
         if not status:
@@ -60,10 +60,11 @@ async def day_weather_date(message: types.Message, state: FSMContext):
         lat, lon = data[0]['lat'], data[0]['lon']
         await states.states.WeatherStates.date_day_weather.set()
         await state.update_data(lat=lat, lon=lon, city=city)
-        await message.answer(text='Введите дату! \n\n'
-                                  '• Обратите внимание на формат даты <b>(Пример: 06.02.2024)</b> \n'
-                                  '• В этом разделе можно получить прогноз погоды на выбранную дату '
-                                  'в промежутке с 02.01.1979 по 09.06.2025',
+        await message.answer(text='📅 Введите дату в формате <b>ДД.ММ.ГГГГ</b>\n\n'
+                                  'Например: <code>06.02.2024</code>\n\n'
+                                  '⚠️ Обратите внимание:\n'
+                                  '• Данные доступны за период <b>с 02.01.1979 по сегодняшний день</b>.\n'
+                                  '• Если ввести неверный формат, бот не сможет обработать запрос.',
                              parse_mode=types.ParseMode.HTML)
     except CityValidationError:
         await message.answer(text='Некорректное название города')
@@ -99,7 +100,7 @@ async def day_weather_command(message: types.Message, state: FSMContext):
             return
 
         date = datetime.strftime(input_date, '%Y-%m-%d')
-        api_key = config.RAPID_API_KEY
+        api_key = config.OPENWEATHER_API_KEY
         data = await state.get_data()
         lat = data.get('lat')
         lon = data.get('lon')

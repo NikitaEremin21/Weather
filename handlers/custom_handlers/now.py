@@ -55,7 +55,7 @@ async def weather_now_command(message: types.Message, state: FSMContext):
         if not validation_city_name(city):
             raise CityValidationError
         lang = 'ru'
-        api_key = config.RAPID_API_KEY
+        api_key = config.OPENWEATHER_API_KEY
 
         status, data = await get_weather_now(city, lang, api_key)
 
