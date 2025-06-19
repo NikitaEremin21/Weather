@@ -21,6 +21,13 @@ OPENWEATHER_FIVE_DAY_API = 'https://api.openweathermap.org/data/2.5/forecast?'
 OPENWEATHER_DAY_WEATHER_API = 'https://api.openweathermap.org/data/3.0/onecall/day_summary?'
 OPENWEATHER_COORDINATION = 'http://api.openweathermap.org/geo/1.0/direct?'
 
+POSTGRES_HOST = 'localhost'
+POSTGRES_PORT = 5432
+POSTGRES_DB = 'weather_bot_db'
+POSTGRES_USER = os.getenv('POSTGRES_USER')
+POSTGRES_PASSWORD = os.getenv('POSTGRES_PASSWORD')
+POSTGRES_URL = f"postgresql+asyncpg://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+
 REDIS_HOST = 'localhost'
 REDIS_PORT = 6379
 CACHE_TTL_NOW = 900

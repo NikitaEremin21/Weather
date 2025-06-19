@@ -5,3 +5,4 @@ loguru~=0.7.2
 pillow~=10.3.0
 redis~=6.2.0
 transliterate~=1.10.2
+SQLAlchemy~=2.0.41
