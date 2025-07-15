@@ -18,15 +18,24 @@ AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=F
 
 @dp.message_handler(commands=['start'])
 async def start_command(message: types.Message):
+    async with AsyncSessionLocal() as db:
+        user = await get_user_by_telegram_id(message.from_user.id, db)
+        if user:
+            await message.answer(
+                'Вы уже зарегистрированы!  ✅',
+                reply_markup=get_main_keyboard(),
+            )
+            return
+
     await message.answer(text='Привет! 🌦️ Я бот "Weather".\n\n'
                               'Я использую данные открытого источника "OpenWeather", чтобы предоставить '
                               'вам актуальную и достоверную информацию о погоде.\n'
                               'Я могу:\n\n'
                               ' • показать погоду в данный момент\n'
                               ' • показать погоду на 5 дней\n'
-                              ' • показать погоду в определенную дату.\n\n'
-                              'Для начала, введите ваш город по умолчанию',
+                              ' • показать погоду в определенную дату.',
                          )
+    await message.answer(text='Для начала, введите ваш город по умолчанию')
     await RegistrationStates.waiting_for_city.set()
 
 
