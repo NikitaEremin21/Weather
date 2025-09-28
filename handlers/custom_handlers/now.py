@@ -1,7 +1,7 @@
 from aiogram import types
 from loader import dp
 from aiogram.dispatcher import FSMContext
-from services.weather_apy import get_weather_now
+from services.weather_api import get_weather_now
 from config_data import config
 from loguru import logger
 import os

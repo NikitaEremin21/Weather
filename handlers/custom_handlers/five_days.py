@@ -3,7 +3,7 @@ from loader import dp
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from services.weather_apy import get_weather_five_days
+from services.weather_api import get_weather_five_days
 from config_data import config
 from loguru import logger
 import states

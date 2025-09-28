@@ -3,7 +3,7 @@ from loader import dp
 from aiogram.dispatcher import FSMContext
 from aiogram.dispatcher.filters import Command
 from aiogram.dispatcher.filters.state import State, StatesGroup
-from services.weather_apy import get_weather_day, get_coordinates
+from services.weather_api import get_weather_day, get_coordinates
 from services.validators import validation_city_name, validate_date_format, validate_date_range
 from services.errors import CityValidationError, CityNotFoundError, DateValidationCity, MessageError, APIError
 from config_data import config
